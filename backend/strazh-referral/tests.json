@@ -1,0 +1,44 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET без user_id — 400",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET реферальный код для user_id=1",
+      "method": "GET",
+      "path": "/?user_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {"ref_code": "", "invited_count": 0},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST без параметров — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "ref_code and new_user_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST несуществующий код — 404",
+      "method": "POST",
+      "path": "/",
+      "body": {"ref_code": "FAKECODE00", "new_user_id": 999},
+      "expectedStatus": 404,
+      "expectedBody": {"error": "Реферальный код не найден"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
