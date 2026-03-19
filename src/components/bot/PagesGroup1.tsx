@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import { Toggle2, SectionTitle, Card, INITIAL_ANTISPAM } from "./ui";
+import { Toggle2, ToggleRow, SectionTitle, Card, StatCard, INITIAL_ANTISPAM } from "./ui";
 
 /* ══════════════════════════════════════════
    PAGE: DASHBOARD
@@ -20,6 +20,14 @@ export function DashboardPage() {
     { time: "11:55", icon: "UserCheck",     color: "text-emerald-400",text: "Новый участник → Кирилл Зайцев"             },
     { time: "11:12", icon: "TrendingUp",    color: "text-cyan-400",   text: "Смена роли → Мария Крылова: Старожил"       },
   ];
+  const features = [
+    { label: "Антиспам",    on: true  },
+    { label: "Приветствие", on: true  },
+    { label: "Репутация",   on: true  },
+    { label: "Автоварны",   on: true  },
+    { label: "Капча",       on: true  },
+    { label: "Капс-фильтр", on: false },
+  ];
 
   return (
     <div className="space-y-5">
@@ -34,18 +42,7 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-2.5">
         {stats.map((s, i) => (
-          <Card key={i} style={{ animationDelay: `${i * 50}ms` }} className="animate-fade-in">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-                <p className={`text-2xl font-bold mono ${s.color}`}>{s.val}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{s.sub}</p>
-              </div>
-              <div className="p-2 rounded-lg bg-[hsl(220_12%_16%)]">
-                <Icon name={s.icon as any} size={16} className={s.color} />
-              </div>
-            </div>
-          </Card>
+          <StatCard key={i} {...s} delay={i * 50} />
         ))}
       </div>
 
@@ -65,14 +62,7 @@ export function DashboardPage() {
       <Card className="animate-fade-in" style={{ animationDelay: "280ms" }}>
         <SectionTitle>Статус функций</SectionTitle>
         <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: "Антиспам",    on: true  },
-            { label: "Приветствие", on: true  },
-            { label: "Репутация",   on: true  },
-            { label: "Автоварны",   on: true  },
-            { label: "Капча",       on: true  },
-            { label: "Капс-фильтр", on: false },
-          ].map((f, i) => (
+          {features.map((f, i) => (
             <div key={i} className="flex items-center gap-2 text-sm">
               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${f.on ? "bg-emerald-400" : "bg-slate-600"}`} />
               <span className={f.on ? "" : "text-muted-foreground"}>{f.label}</span>
@@ -88,11 +78,11 @@ export function DashboardPage() {
    PAGE: WELCOME
 ══════════════════════════════════════════ */
 export function WelcomePage() {
-  const [captcha, setCaptcha] = useState(true);
+  const [captcha,   setCaptcha]   = useState(true);
   const [sendRules, setSendRules] = useState(true);
-  const [autoKick, setAutoKick] = useState(false);
-  const [kickMin, setKickMin] = useState("10");
-  const [text, setText] = useState(
+  const [autoKick,  setAutoKick]  = useState(false);
+  const [kickMin,   setKickMin]   = useState("10");
+  const [text,      setText]      = useState(
     "👋 Привет, {имя}! Добро пожаловать в группу.\n\nПожалуйста, прочитай правила и нажми кнопку «Я принял правила»."
   );
   const [byeText, setByeText] = useState("👋 {имя} покинул(а) группу.");
@@ -106,30 +96,20 @@ export function WelcomePage() {
 
       <Card className="animate-fade-in space-y-4">
         <SectionTitle>Приветственное сообщение</SectionTitle>
-        <textarea value={text} onChange={e => setText(e.target.value)} rows={5}
-          className="w-full rounded-lg bg-[hsl(220_12%_9%)] border border-border text-sm p-3 resize-none focus:outline-none focus:border-cyan-500/60 transition-colors" />
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={5} className="field-textarea" />
         <p className="text-xs text-muted-foreground">
           Переменные: <span className="mono text-cyan-400">{"{имя}"}</span> · <span className="mono text-cyan-400">{"{username}"}</span> · <span className="mono text-cyan-400">{"{group}"}</span>
         </p>
         <div className="space-y-3 pt-1">
-          {[
-            { label: "Капча при входе",           sub: "Кнопка «Я принял правила» — без неё мут",    on: captcha,   set: setCaptcha   },
-            { label: "Отправить правила в ЛС",    sub: "Бот дублирует правила в личку новичку",      on: sendRules, set: setSendRules },
-            { label: "Автокик без подтверждения", sub: "Исключить, если не нажал капчу за N минут",  on: autoKick,  set: setAutoKick  },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-muted-foreground">{item.sub}</p>
-              </div>
-              <Toggle2 on={item.on} onChange={() => item.set(!item.on)} />
-            </div>
-          ))}
+          <ToggleRow label="Капча при входе"           sub="Кнопка «Я принял правила» — без неё мут"   on={captcha}   onChange={() => setCaptcha(!captcha)}     />
+          <ToggleRow label="Отправить правила в ЛС"    sub="Бот дублирует правила в личку новичку"     on={sendRules} onChange={() => setSendRules(!sendRules)} />
+          <ToggleRow label="Автокик без подтверждения" sub="Исключить, если не нажал капчу за N минут" on={autoKick}  onChange={() => setAutoKick(!autoKick)}   />
           {autoKick && (
             <div className="flex items-center gap-3 pl-1">
               <span className="text-sm text-muted-foreground">Время до кика:</span>
               <input type="number" value={kickMin} onChange={e => setKickMin(e.target.value)} min={1} max={60}
-                className="w-16 rounded-md bg-[hsl(220_12%_9%)] border border-border text-sm px-2 py-1.5 mono text-center focus:outline-none focus:border-cyan-500/60" />
+                className="w-16 rounded-md border border-border text-sm px-2 py-1.5 mono text-center focus:outline-none focus:border-cyan-500/60"
+                style={{ background: "hsl(220 12% 9%)" }} />
               <span className="text-sm text-muted-foreground">мин.</span>
             </div>
           )}
@@ -138,8 +118,7 @@ export function WelcomePage() {
 
       <Card className="animate-fade-in space-y-3">
         <SectionTitle>Сообщение при выходе</SectionTitle>
-        <textarea value={byeText} onChange={e => setByeText(e.target.value)} rows={2}
-          className="w-full rounded-lg bg-[hsl(220_12%_9%)] border border-border text-sm p-3 resize-none focus:outline-none focus:border-cyan-500/60 transition-colors" />
+        <textarea value={byeText} onChange={e => setByeText(e.target.value)} rows={2} className="field-textarea" />
         <p className="text-xs text-muted-foreground">Оставь пустым — бот не отправит ничего</p>
       </Card>
 
@@ -154,14 +133,20 @@ export function WelcomePage() {
    PAGE: ANTISPAM
 ══════════════════════════════════════════ */
 export function AntispamPage() {
-  const [items, setItems] = useState(INITIAL_ANTISPAM);
-  const [mode, setMode] = useState<"soft" | "balanced" | "strict">("balanced");
-  const [words, setWords] = useState(["казино", "крипто", "ставки", "заработок100%"]);
+  const [items,   setItems]   = useState(INITIAL_ANTISPAM);
+  const [mode,    setMode]    = useState<"soft" | "balanced" | "strict">("balanced");
+  const [words,   setWords]   = useState(["казино", "крипто", "ставки", "заработок100%"]);
   const [newWord, setNewWord] = useState("");
 
-  const toggle = (id: string) => setItems(f => f.map(x => x.id === id ? { ...x, on: !x.on } : x));
-  const addWord = () => { if (newWord.trim()) { setWords(w => [...w, newWord.trim().toLowerCase()]); setNewWord(""); } };
+  const toggleFilter = (id: string) => setItems(f => f.map(x => x.id === id ? { ...x, on: !x.on } : x));
+  const addWord    = () => { if (newWord.trim()) { setWords(w => [...w, newWord.trim().toLowerCase()]); setNewWord(""); } };
   const removeWord = (w: string) => setWords(ws => ws.filter(x => x !== w));
+
+  const modes = [
+    { key: "soft"     as const, label: "Мягкий",  desc: "Предупреждает",  icon: "MessageCircle" },
+    { key: "balanced" as const, label: "Норма",   desc: "Удаляет + варн", icon: "Scale"         },
+    { key: "strict"   as const, label: "Строгий", desc: "Мут сразу",      icon: "ShieldX"       },
+  ];
 
   return (
     <div className="space-y-5">
@@ -173,11 +158,7 @@ export function AntispamPage() {
       <Card className="animate-fade-in">
         <SectionTitle>Строгость бота</SectionTitle>
         <div className="grid grid-cols-3 gap-2">
-          {([
-            { key: "soft",     label: "Мягкий",  desc: "Предупреждает",  icon: "MessageCircle" },
-            { key: "balanced", label: "Норма",   desc: "Удаляет + варн", icon: "Scale"         },
-            { key: "strict",   label: "Строгий", desc: "Мут сразу",      icon: "ShieldX"       },
-          ] as const).map(m => (
+          {modes.map(m => (
             <button key={m.key} onClick={() => setMode(m.key)}
               className={`p-3 rounded-lg border text-center transition-all ${mode === m.key
                 ? "bg-cyan-500/12 border-cyan-500/40 text-cyan-300"
@@ -193,13 +174,7 @@ export function AntispamPage() {
       <Card className="animate-fade-in space-y-3">
         <SectionTitle>Фильтры</SectionTitle>
         {items.map(item => (
-          <div key={item.id} className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{item.label}</p>
-              <p className="text-xs text-muted-foreground truncate">{item.sub}</p>
-            </div>
-            <Toggle2 on={item.on} onChange={() => toggle(item.id)} />
-          </div>
+          <ToggleRow key={item.id} label={item.label} sub={item.sub} on={item.on} onChange={() => toggleFilter(item.id)} />
         ))}
       </Card>
 
@@ -216,7 +191,7 @@ export function AntispamPage() {
         <div className="flex gap-2">
           <input value={newWord} onChange={e => setNewWord(e.target.value)}
             onKeyDown={e => e.key === "Enter" && addWord()} placeholder="Добавить слово..."
-            className="flex-1 rounded-lg bg-[hsl(220_12%_9%)] border border-border text-sm px-3 py-2 focus:outline-none focus:border-cyan-500/60 transition-colors" />
+            className="field-input flex-1" style={{ width: "auto" }} />
           <button onClick={addWord}
             className="px-3 py-2 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/25 transition-colors">
             <Icon name="Plus" size={15} />

@@ -121,6 +121,16 @@
   .badge-role {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium mono;
   }
+
+  /* Переиспользуемые стили полей ввода */
+  .field-input {
+    @apply w-full rounded-lg border border-border text-sm px-3 py-2.5 focus:outline-none focus:border-cyan-500/60 transition-colors;
+    background: hsl(220 12% 9%);
+  }
+  .field-textarea {
+    @apply w-full rounded-lg border border-border text-sm p-3 resize-none focus:outline-none focus:border-cyan-500/60 transition-colors;
+    background: hsl(220 12% 9%);
+  }
 }
 
 /* Animations */
