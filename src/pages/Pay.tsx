@@ -65,9 +65,9 @@ export default function Pay() {
     const check = async () => {
       if (!user?.id) return;
       try {
-        const func2url = await import("../../func2url.json").catch(() => null);
-        if (!func2url) return;
-        const baseUrl = (func2url as Record<string, string>)["strazh-subscriptions"];
+        // После деплоя бэкенда URL подставится из func2url.json
+        // Пока функции не задеплоены — проверка пропускается
+        const baseUrl = (window as Record<string, unknown>)["STRAZH_SUBSCRIPTIONS_URL"] as string | undefined;
         if (!baseUrl) return;
         const res = await fetch(`${baseUrl}/status?user_id=${user.id}`);
         if (!res.ok) return;
