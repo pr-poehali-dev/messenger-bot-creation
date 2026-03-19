@@ -41,9 +41,7 @@ export default function Landing() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-background/90 backdrop-blur border-b border-border" : ""}`}>
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center">
-              <span className="text-lg">⚔️</span>
-            </div>
+            <img src="https://cdn.poehali.dev/projects/a42d062d-9fbc-499f-a244-58736cf70e7a/files/dd4734fe-a2fe-44d2-97cf-3df5440f4a2c.jpg" alt="Страж" className="w-8 h-8 rounded-lg object-cover" />
             <span className="font-bold text-lg tracking-tight">Страж</span>
           </div>
           <div className="flex items-center gap-3">

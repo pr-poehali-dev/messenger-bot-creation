@@ -146,7 +146,7 @@ export default function Dashboard() {
       <header className="border-b border-border px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <button onClick={() => navigate("/")} className="flex items-center gap-2.5">
-            <span className="text-xl">⚔️</span>
+            <img src="https://cdn.poehali.dev/projects/a42d062d-9fbc-499f-a244-58736cf70e7a/files/dd4734fe-a2fe-44d2-97cf-3df5440f4a2c.jpg" alt="Страж" className="w-8 h-8 rounded-lg object-cover" />
             <span className="font-black">Страж</span>
           </button>
           <div className="flex items-center gap-3">
