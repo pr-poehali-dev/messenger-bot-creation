@@ -1,19 +1,44 @@
 {
   "tests": [
     {
-      "name": "Регистрация нового пользователя",
-      "method": "POST",
-      "path": "/",
-      "body": {"max_user_id": 999999001, "max_username": "test_user", "max_name": "Тест Пользователь"},
-      "expectedStatus": 200,
-      "expectedBody": {"status": "ok"},
-      "bodyMatcher": "partial"
-    },
-    {
       "name": "OPTIONS CORS",
       "method": "OPTIONS",
       "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST / — регистрация пользователя",
+      "method": "POST",
+      "path": "/",
+      "body": {"max_user_id": 999999001, "max_username": "test_user", "max_name": "Тест"},
       "expectedStatus": 200,
+      "expectedBody": {"user_id": 0, "session_token": ""},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST / без max_user_id — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "max_user_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /pricing — список тарифов",
+      "method": "GET",
+      "path": "/pricing",
+      "expectedStatus": 200,
+      "expectedBody": {"plans": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST /pricing без параметров — 400",
+      "method": "POST",
+      "path": "/pricing",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id, plan, price_rub required"},
       "bodyMatcher": "partial"
     }
   ]

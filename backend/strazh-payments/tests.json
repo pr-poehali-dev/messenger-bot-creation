@@ -1,0 +1,60 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET /status без user_id — 400",
+      "method": "GET",
+      "path": "/status",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /status несуществующий user — 404",
+      "method": "GET",
+      "path": "/status?user_id=999999999",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "Подписка не найдена"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST /create-payment без параметров — 400",
+      "method": "POST",
+      "path": "/create-payment",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id, plan required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST /create-payment неверный план — 400",
+      "method": "POST",
+      "path": "/create-payment",
+      "body": {"user_id": 1, "plan": "invalid"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Неверный тариф"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST /confirm-payment без order_id — 400",
+      "method": "POST",
+      "path": "/confirm-payment",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "order_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST /ymhook без тела — no label",
+      "method": "POST",
+      "path": "/ymhook",
+      "body": {},
+      "expectedStatus": 200
+    }
+  ]
+}

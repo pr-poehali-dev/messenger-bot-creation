@@ -1,0 +1,67 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET /settings без group_id — 400",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "group_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /settings несуществующая группа — 404",
+      "method": "GET",
+      "path": "/?group_id=nonexistent_xyz_123",
+      "expectedStatus": 404,
+      "expectedBody": {"connected": false},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /violations без group_id — 400",
+      "method": "GET",
+      "path": "/violations",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "group_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /violations для группы — 200",
+      "method": "GET",
+      "path": "/violations?group_id=test_group_123&days=7",
+      "expectedStatus": 200,
+      "expectedBody": {"total": 0},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /lists без group_id — 400",
+      "method": "GET",
+      "path": "/lists",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "group_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /lists для группы — 200",
+      "method": "GET",
+      "path": "/lists?group_id=test_group_123",
+      "expectedStatus": 200,
+      "expectedBody": {"whitelist": [], "blacklist": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST connect без параметров — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "connect", "token": "", "group_id": ""},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "token and group_id required"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
