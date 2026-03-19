@@ -10,7 +10,7 @@ const PLAN_LABELS: Record<string, string> = {
 
 // ЮMoney quickpay форма — стандартный способ приёма платежей без регистрации юрлица
 // После регистрации в ЮMoney замените YOOMONEY_WALLET на ваш номер кошелька
-const YOOMONEY_WALLET = "ВАШ_НОМЕР_КОШЕЛЬКА"; // TODO: заменить после регистрации ЮMoney
+const YOOMONEY_WALLET = "4100119496701354";
 
 export default function Pay() {
   const [params]   = useSearchParams();
