@@ -1,0 +1,44 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS CORS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET без group_id — 400",
+      "method": "GET",
+      "path": "/?group_id=",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "group_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET несуществующей группы — 404",
+      "method": "GET",
+      "path": "/?group_id=test_nonexistent_123",
+      "expectedStatus": 404,
+      "expectedBody": {"connected": false},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST connect без токена — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "connect", "token": "", "group_id": "123"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "token and group_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST save_rules без group_id — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "save_rules", "group_id": "", "rules_text": "Правила"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "group_id required"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

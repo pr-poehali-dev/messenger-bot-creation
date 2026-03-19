@@ -3,7 +3,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { type Page } from "@/components/bot/ui";
 import { DashboardPage, WelcomePage, AntispamPage } from "@/components/bot/PagesGroup1";
-import { CommandsPage, ReputationPage, WarnsPage, ConnectPage } from "@/components/bot/PagesGroup2";
+import { CommandsPage, ReputationPage, WarnsPage, RulesPage, ConnectPage } from "@/components/bot/PagesGroup2";
 
 /* ══════════════════════════════════════════
    NAV
@@ -15,6 +15,7 @@ const NAV: { key: Page; label: string; icon: string }[] = [
   { key: "commands",   label: "Команды",     icon: "Terminal"        },
   { key: "reputation", label: "Репутация",   icon: "Star"            },
   { key: "warns",      label: "Варны",       icon: "AlertTriangle"   },
+  { key: "rules",      label: "Правила",     icon: "BookOpen"        },
   { key: "connect",    label: "Подключение", icon: "Link"            },
 ];
 
@@ -32,6 +33,7 @@ export default function Index() {
     commands:   <CommandsPage />,
     reputation: <ReputationPage />,
     warns:      <WarnsPage />,
+    rules:      <RulesPage />,
     connect:    <ConnectPage />,
   };
 

@@ -3,7 +3,7 @@
 /* ══════════════════════════════════════════
    TYPES
 ══════════════════════════════════════════ */
-export type Page = "dashboard" | "welcome" | "antispam" | "commands" | "reputation" | "warns" | "connect";
+export type Page = "dashboard" | "welcome" | "antispam" | "commands" | "reputation" | "warns" | "rules" | "connect";
 
 export type ToggleItem = { id: string; label: string; sub: string; on: boolean };
 export type Command = { cmd: string; desc: string; access: "all" | "admin" | "mod"; enabled: boolean };

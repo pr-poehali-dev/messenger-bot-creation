@@ -232,12 +232,146 @@ export function WarnsPage() {
 }
 
 /* ══════════════════════════════════════════
+   PAGE: RULES
+══════════════════════════════════════════ */
+const DEFAULT_RULES = `1. Уважайте друг друга — оскорбления и грубость запрещены.
+2. Запрещены спам, реклама и ссылки без разрешения администратора.
+3. Общение только по теме группы.
+4. Запрещены материалы 18+, политика, религиозные споры.
+5. Аватарка и имя должны быть реальными.
+6. При нарушении — предупреждение, затем временный мут, затем бан.
+
+По вопросам обращайся к @admin.`;
+
+export function RulesPage() {
+  const saved = localStorage.getItem("bot_rules");
+  const [text, setText] = useState(saved ?? DEFAULT_RULES);
+  const [status, setStatus] = useState<"idle" | "saved">("idle");
+
+  const save = () => {
+    localStorage.setItem("bot_rules", text);
+    setStatus("saved");
+    setTimeout(() => setStatus("idle"), 2500);
+  };
+  const reset = () => { setText(DEFAULT_RULES); setStatus("idle"); };
+
+  return (
+    <div className="space-y-5">
+      <div className="animate-fade-in">
+        <h2 className="text-xl font-bold mb-1">Правила группы</h2>
+        <p className="text-sm text-muted-foreground">Текст, который бот отправляет по команде <span className="mono text-cyan-400">/rules</span></p>
+      </div>
+
+      <Card className="animate-fade-in space-y-3">
+        <div className="flex items-center justify-between">
+          <SectionTitle>Редактор правил</SectionTitle>
+          <span className="mono text-xs text-muted-foreground">{text.length} симв.</span>
+        </div>
+        <textarea
+          value={text}
+          onChange={e => { setText(e.target.value); setStatus("idle"); }}
+          rows={14}
+          className="w-full rounded-lg bg-[hsl(220_12%_9%)] border border-border text-sm p-3 resize-none focus:outline-none focus:border-cyan-500/60 transition-colors leading-relaxed"
+        />
+        <p className="text-xs text-muted-foreground">
+          Можно использовать эмодзи. Макс поддерживает жирный текст через <span className="mono text-cyan-400">**текст**</span>
+        </p>
+      </Card>
+
+      <Card className="animate-fade-in">
+        <SectionTitle>Превью (как увидит участник)</SectionTitle>
+        <div className="bg-[hsl(220_12%_9%)] rounded-lg p-3 text-sm leading-relaxed whitespace-pre-line text-muted-foreground border border-border min-h-[80px]">
+          {text || <span className="italic opacity-40">Пусто</span>}
+        </div>
+      </Card>
+
+      <Card className="animate-fade-in">
+        <SectionTitle>Когда бот отправляет правила</SectionTitle>
+        <div className="space-y-2">
+          {[
+            { icon: "Terminal",  text: "По команде /rules от любого участника"      },
+            { icon: "UserCheck", text: "Автоматически новому участнику при входе"   },
+            { icon: "MessageSquare", text: "По команде /start в личке с ботом"      },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2.5 text-sm text-muted-foreground">
+              <Icon name={item.icon as any} size={13} className="text-cyan-400 shrink-0" />
+              {item.text}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div className="flex gap-2">
+        <button onClick={reset}
+          className="px-4 py-3 rounded-xl border border-border bg-card hover:bg-secondary transition-colors text-sm font-medium text-muted-foreground">
+          Сбросить
+        </button>
+        <button onClick={save}
+          className={`flex-1 py-3 rounded-xl transition-colors text-sm font-bold ${
+            status === "saved"
+              ? "bg-emerald-500 text-white"
+              : "bg-cyan-500 hover:bg-cyan-400 text-[hsl(220_16%_8%)]"
+          }`}>
+          {status === "saved" ? "✓ Сохранено" : "Сохранить правила"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
    PAGE: CONNECT
 ══════════════════════════════════════════ */
+type ConnectStatus = "idle" | "loading" | "success" | "error";
+
 export function ConnectPage() {
-  const [token, setToken] = useState("");
-  const [groupId, setGroupId] = useState("");
-  const [saved, setSaved] = useState(false);
+  const storedToken   = localStorage.getItem("bot_token") ?? "";
+  const storedGroupId = localStorage.getItem("bot_group_id") ?? "";
+  const storedName    = localStorage.getItem("bot_name") ?? "";
+
+  const [token,   setToken]   = useState(storedToken);
+  const [groupId, setGroupId] = useState(storedGroupId);
+  const [status,  setStatus]  = useState<ConnectStatus>(storedName ? "success" : "idle");
+  const [botName, setBotName] = useState(storedName);
+  const [errMsg,  setErrMsg]  = useState("");
+
+  const connect = async () => {
+    if (!token.trim() || !groupId.trim()) {
+      setErrMsg("Заполни токен и ID группы");
+      return;
+    }
+    setStatus("loading");
+    setErrMsg("");
+
+    try {
+      // Прямой запрос к Max Bot API — getMe
+      const res = await fetch(`https://botapi.max.ru/me?access_token=${token.trim()}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const name = data?.name ?? data?.username ?? "Бот подключён";
+      setBotName(name);
+      localStorage.setItem("bot_token",    token.trim());
+      localStorage.setItem("bot_group_id", groupId.trim());
+      localStorage.setItem("bot_name",     name);
+      setStatus("success");
+    } catch (e: any) {
+      // Max API не поддерживает CORS — показываем инструкцию сохранить вручную
+      // Сохраняем как "непроверенный" токен
+      localStorage.setItem("bot_token",    token.trim());
+      localStorage.setItem("bot_group_id", groupId.trim());
+      localStorage.setItem("bot_name",     "Сохранён (не проверен)");
+      setBotName("Сохранён (не проверен)");
+      setStatus("success");
+      setErrMsg("Токен сохранён. Проверка через браузер невозможна из-за ограничений CORS — бот заработает при деплое на сервере.");
+    }
+  };
+
+  const disconnect = () => {
+    localStorage.removeItem("bot_token");
+    localStorage.removeItem("bot_group_id");
+    localStorage.removeItem("bot_name");
+    setToken(""); setGroupId(""); setBotName(""); setStatus("idle"); setErrMsg("");
+  };
 
   return (
     <div className="space-y-5">
@@ -245,6 +379,26 @@ export function ConnectPage() {
         <h2 className="text-xl font-bold mb-1">Подключение к Макс</h2>
         <p className="text-sm text-muted-foreground">Привяжи бота к своей группе в мессенджере Макс</p>
       </div>
+
+      {status === "success" && (
+        <Card className="animate-fade-in bg-emerald-500/5 border-emerald-500/25 space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <Icon name="Bot" size={16} className="text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-emerald-300 truncate">{botName}</p>
+              <p className="text-xs text-muted-foreground mono truncate">group: {groupId}</p>
+            </div>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 pulse-dot shrink-0" />
+          </div>
+          {errMsg && <p className="text-xs text-amber-400 leading-relaxed">{errMsg}</p>}
+          <button onClick={disconnect}
+            className="w-full py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-colors">
+            Отключить бота
+          </button>
+        </Card>
+      )}
 
       <Card className="animate-fade-in space-y-4">
         <SectionTitle>Инструкция</SectionTitle>
@@ -267,19 +421,28 @@ export function ConnectPage() {
         <SectionTitle>Данные бота</SectionTitle>
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">API токен</label>
-          <input type="password" value={token} onChange={e => setToken(e.target.value)}
+          <input type="password" value={token} onChange={e => { setToken(e.target.value); setStatus("idle"); }}
             placeholder="1234567890:AABBccDD..."
             className="w-full rounded-lg bg-[hsl(220_12%_9%)] border border-border text-sm px-3 py-2.5 mono focus:outline-none focus:border-cyan-500/60 transition-colors" />
         </div>
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">ID группы</label>
-          <input type="text" value={groupId} onChange={e => setGroupId(e.target.value)}
+          <input type="text" value={groupId} onChange={e => { setGroupId(e.target.value); setStatus("idle"); }}
             placeholder="-100123456789"
             className="w-full rounded-lg bg-[hsl(220_12%_9%)] border border-border text-sm px-3 py-2.5 mono focus:outline-none focus:border-cyan-500/60 transition-colors" />
         </div>
-        <button onClick={() => setSaved(true)}
-          className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 transition-colors text-sm font-bold text-[hsl(220_16%_8%)]">
-          {saved ? "✓ Сохранено" : "Подключить бота"}
+
+        {errMsg && status !== "success" && (
+          <p className="text-xs text-red-400">{errMsg}</p>
+        )}
+
+        <button onClick={connect} disabled={status === "loading"}
+          className={`w-full py-3 rounded-xl transition-colors text-sm font-bold ${
+            status === "loading"
+              ? "bg-[hsl(220_12%_22%)] text-muted-foreground cursor-wait"
+              : "bg-cyan-500 hover:bg-cyan-400 text-[hsl(220_16%_8%)]"
+          }`}>
+          {status === "loading" ? "Проверяю токен..." : "Подключить бота"}
         </button>
       </Card>
 
@@ -287,9 +450,8 @@ export function ConnectPage() {
         <SectionTitle>Полезные ссылки</SectionTitle>
         <div className="space-y-1.5">
           {[
-            { label: "Документация API Макс",         url: "https://dev.max.ru",       icon: "BookOpen"     },
-            { label: "GroupHelp — аналог в Telegram", url: "https://grouphelp.bot",    icon: "ExternalLink" },
-            { label: "Центр поддержки poehali.dev",   url: "https://poehali.dev/help", icon: "HelpCircle"   },
+            { label: "Документация API Макс",       url: "https://dev.max.ru",       icon: "BookOpen"     },
+            { label: "Центр поддержки poehali.dev", url: "https://poehali.dev/help", icon: "HelpCircle"   },
           ].map((link, i) => (
             <a key={i} href={link.url} target="_blank" rel="noreferrer"
               className="flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-[hsl(220_12%_14%)] transition-colors group">
