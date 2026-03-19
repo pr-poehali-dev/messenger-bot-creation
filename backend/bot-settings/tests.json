@@ -35,9 +35,27 @@
       "name": "POST save_rules без group_id — 400",
       "method": "POST",
       "path": "/",
-      "body": {"action": "save_rules", "group_id": "", "rules_text": "Правила"},
+      "body": {"action": "save_rules", "group_id": "", "rules_text": "Правила", "token": "tok"},
       "expectedStatus": 400,
       "expectedBody": {"error": "group_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST save_rules без token — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "save_rules", "group_id": "123", "rules_text": "Правила", "token": ""},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "token required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST save_rules несуществующая группа — 404",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "save_rules", "group_id": "nonexistent_group_xyz", "rules_text": "Правила", "token": "anytoken"},
+      "expectedStatus": 404,
+      "expectedBody": {"error": "Группа не найдена"},
       "bodyMatcher": "partial"
     }
   ]

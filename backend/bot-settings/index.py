@@ -111,12 +111,28 @@ def handler(event: dict, context) -> dict:
         if action == "save_rules":
             group_id = (body.get("group_id") or "").strip()
             rules_text = body.get("rules_text", "")
+            token = (body.get("token") or "").strip()
 
             if not group_id:
                 return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "group_id required"})}
+            if not token:
+                return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "token required"})}
 
+            # Проверяем, что token совпадает с сохранённым токеном группы
             conn = get_conn()
             cur = conn.cursor()
+            cur.execute(
+                f"SELECT bot_token FROM {SCHEMA}.bot_settings WHERE group_id = %s",
+                (group_id,)
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.close()
+                return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "Группа не найдена"})}
+            if row[0] != token:
+                conn.close()
+                return {"statusCode": 403, "headers": CORS, "body": json.dumps({"error": "Доступ запрещён"})}
+
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.bot_rules (group_id, rules_text)
                 VALUES (%s, %s)
