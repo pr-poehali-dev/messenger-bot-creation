@@ -193,8 +193,9 @@ export default function Landing() {
             <span className="text-xs text-muted-foreground ml-2">Модерация групп в Макс</span>
           </div>
           <div className="flex gap-5 text-xs text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">Политика конфиденциальности</a>
-            <a href="#" className="hover:text-foreground transition-colors">Оферта</a>
+            <a href="/privacy" className="hover:text-foreground transition-colors">Конфиденциальность</a>
+            <a href="/terms" className="hover:text-foreground transition-colors">Соглашение</a>
+            <a href="/disclaimer" className="hover:text-foreground transition-colors">Отказ от ответственности</a>
             <a href="https://poehali.dev/help" target="_blank" rel="noreferrer" className="hover:text-foreground transition-colors">Поддержка</a>
           </div>
         </div>

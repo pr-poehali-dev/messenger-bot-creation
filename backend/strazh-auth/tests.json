@@ -40,6 +40,14 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "user_id, plan, price_rub required"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /settings — trial_days",
+      "method": "GET",
+      "path": "/settings",
+      "expectedStatus": 200,
+      "expectedBody": {"trial_days": 7},
+      "bodyMatcher": "partial"
     }
   ]
 }

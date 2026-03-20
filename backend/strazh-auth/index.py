@@ -3,6 +3,7 @@
 POST /          — регистрация/вход по max_user_id, запуск триала.
 GET  /pricing   — список тарифов (публично).
 POST /pricing   — обновить тариф (только админ + session_token).
+GET  /settings  — получить настройки (trial_days).
 """
 import json
 import os
@@ -40,6 +41,12 @@ def check_rate_limit(conn, max_user_id: int, limit: int = 10) -> bool:
         conn.commit()
     return count <= limit
 
+def get_trial_days(conn) -> int:
+    with conn.cursor() as cur:
+        cur.execute(f"SELECT value FROM {SCHEMA}.strazh_settings WHERE key = 'trial_days'")
+        row = cur.fetchone()
+    return int(row[0]) if row else 7
+
 def verify_admin(conn, user_id: int, session_token: str) -> bool:
     with conn.cursor() as cur:
         cur.execute(
@@ -59,6 +66,15 @@ def handler(event: dict, context) -> dict:
 
     method = event.get("httpMethod", "GET")
     path   = event.get("path", "/").rstrip("/")
+
+    # ── GET /settings — публичные настройки (trial_days) ──────
+    if method == "GET" and path.endswith("settings"):
+        conn = get_conn()
+        try:
+            trial_days = get_trial_days(conn)
+            return {"statusCode": 200, "headers": CORS, "body": json.dumps({"trial_days": trial_days})}
+        finally:
+            conn.close()
 
     # ── GET /pricing — публичный список тарифов ───────────────
     if method == "GET" and path.endswith("pricing"):
@@ -157,21 +173,22 @@ def handler(event: dict, context) -> dict:
                 """, (user_id,))
                 sub = cur.fetchone()
 
-                now = datetime.now(timezone.utc)
+                now        = datetime.now(timezone.utc)
+                trial_days = get_trial_days(conn)
                 if not sub:
-                    trial_end = now + timedelta(days=7)
+                    trial_end = now + timedelta(days=trial_days)
                     cur.execute(f"""
                         INSERT INTO {SCHEMA}.strazh_subscriptions
-                            (user_id, status, trial_started, trial_ends)
-                        VALUES (%s, 'trial', %s, %s)
+                            (user_id, status, trial_started, trial_ends, trial_days_snapshot)
+                        VALUES (%s, 'trial', %s, %s, %s)
                         RETURNING id, status, trial_ends
-                    """, (user_id, now, trial_end))
+                    """, (user_id, now, trial_end, trial_days))
                     sub_row = cur.fetchone()
                     sub_id, status, expires = sub_row
                     cur.execute(f"""
                         INSERT INTO {SCHEMA}.strazh_audit_log (user_id, action, details)
                         VALUES (%s, 'trial_start', %s)
-                    """, (user_id, json.dumps({"max_user_id": max_user_id})))
+                    """, (user_id, json.dumps({"max_user_id": max_user_id, "trial_days": trial_days})))
                 else:
                     sub_id, status, trial_started, trial_ends, paid_ends = sub
                     if status == "trial" and trial_ends and now > trial_ends:

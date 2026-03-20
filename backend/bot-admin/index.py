@@ -3,6 +3,8 @@
 GET  /settings?group_id={id}                — настройки и правила группы.
 POST / (action=connect)                     — подключить бота (проверка токена через Max API).
 POST / (action=save_rules)                  — сохранить правила группы.
+POST / (action=set_trial_days)              — изменить длительность триала (только админ).
+GET  /trial-settings?user_id=&token=        — получить trial_days (только админ).
 GET  /violations?group_id={id}&days=7       — статистика нарушений.
 POST /violations                            — зафиксировать нарушение (от бота).
 GET  /lists?group_id={id}                   — whitelist и blacklist.
@@ -11,6 +13,8 @@ DELETE /lists                               — удалить из списка
 """
 import json
 import os
+import hashlib
+import hmac
 import psycopg2
 import urllib.request
 import urllib.error
@@ -43,6 +47,28 @@ def verify_group_token(conn, group_id: str, token: str) -> bool:
         row = cur.fetchone()
     return bool(row and row[0] == token)
 
+def make_session_token(max_user_id: int, user_id: int) -> str:
+    raw = f"{max_user_id}:{user_id}:{os.environ.get('DATABASE_URL','')[:20]}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+def verify_admin(conn, user_id: int, session_token: str) -> bool:
+    with conn.cursor() as cur:
+        cur.execute(
+            f"SELECT is_admin, max_user_id FROM {SCHEMA}.strazh_users WHERE id = %s",
+            (user_id,)
+        )
+        row = cur.fetchone()
+    if not row or not row[0]:
+        return False
+    expected = make_session_token(row[1], user_id)
+    return hmac.compare_digest(expected, session_token)
+
+def get_trial_days(conn) -> int:
+    with conn.cursor() as cur:
+        cur.execute(f"SELECT value FROM {SCHEMA}.strazh_settings WHERE key = 'trial_days'")
+        row = cur.fetchone()
+    return int(row[0]) if row else 7
+
 def handler(event: dict, context) -> dict:
     """Управление ботом, правилами, нарушениями и списками участников."""
     if event.get("httpMethod") == "OPTIONS":
@@ -53,6 +79,19 @@ def handler(event: dict, context) -> dict:
     conn   = get_conn()
 
     try:
+        # ── TRIAL SETTINGS (только админ) ────────────────────────
+        if "trial-settings" in path:
+            if method == "GET":
+                params   = event.get("queryStringParameters") or {}
+                user_id  = params.get("user_id")
+                token    = params.get("session_token", "")
+                if not user_id:
+                    return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "user_id required"})}
+                if not verify_admin(conn, int(user_id), token):
+                    return {"statusCode": 403, "headers": CORS, "body": json.dumps({"error": "Доступ запрещён"})}
+                trial_days = get_trial_days(conn)
+                return {"statusCode": 200, "headers": CORS, "body": json.dumps({"trial_days": trial_days})}
+
         # ── VIOLATIONS ───────────────────────────────────────────
         if "violations" in path:
             if method == "GET":
@@ -230,6 +269,34 @@ def handler(event: dict, context) -> dict:
                 return {"statusCode": 200, "headers": CORS, "body": json.dumps({
                     "ok": True, "bot_name": verify.get("name", ""), "bot_username": verify.get("username", ""),
                 })}
+
+            if action == "set_trial_days":
+                user_id   = body.get("user_id")
+                token     = body.get("session_token", "")
+                days      = body.get("days")
+                if not user_id or days is None:
+                    return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "user_id, days required"})}
+                try:
+                    days_int = int(days)
+                except (ValueError, TypeError):
+                    return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "days must be integer"})}
+                if days_int < 1 or days_int > 365:
+                    return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "days must be 1–365"})}
+                if not verify_admin(conn, int(user_id), token):
+                    return {"statusCode": 403, "headers": CORS, "body": json.dumps({"error": "Доступ запрещён"})}
+
+                with conn.cursor() as cur:
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.strazh_settings (key, value, updated_at)
+                        VALUES ('trial_days', %s, NOW())
+                        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+                    """, (str(days_int),))
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.strazh_audit_log (user_id, action, details)
+                        VALUES (%s, 'trial_days_changed', %s)
+                    """, (int(user_id), json.dumps({"new_days": days_int})))
+                    conn.commit()
+                return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True, "trial_days": days_int})}
 
             if action == "save_rules":
                 group_id   = (body.get("group_id") or "").strip()

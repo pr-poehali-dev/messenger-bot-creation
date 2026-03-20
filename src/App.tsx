@@ -10,6 +10,9 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Pay from "./pages/Pay";
 import Admin from "./pages/Admin";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Disclaimer from "./pages/Disclaimer";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +28,9 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/pay" element={<Pay />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/disclaimer" element={<Disclaimer />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

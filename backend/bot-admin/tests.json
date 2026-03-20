@@ -62,6 +62,33 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "token and group_id required"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST set_trial_days без user_id — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "set_trial_days", "days": 14},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id, days required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST set_trial_days некорректное число — 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "set_trial_days", "user_id": 1, "session_token": "bad", "days": 0},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "days must be 1–365"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST set_trial_days без прав — 403",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "set_trial_days", "user_id": 1, "session_token": "fakefakefake", "days": 14},
+      "expectedStatus": 403,
+      "expectedBody": {"error": "Доступ запрещён"},
+      "bodyMatcher": "partial"
     }
   ]
 }
