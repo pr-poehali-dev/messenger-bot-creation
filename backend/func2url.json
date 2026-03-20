@@ -1,0 +1,7 @@
+{
+  "strazh-auth": "https://functions.poehali.dev/332732c6-4f59-414a-83da-c41278030a95",
+  "strazh-payments": "https://functions.poehali.dev/83cacc96-7f55-4b85-ab51-4244bad1c71a",
+  "strazh-notify": "https://functions.poehali.dev/f64267c3-4d92-4f6a-b6e9-f6345fc774f0",
+  "strazh-referral": "https://functions.poehali.dev/a33b038b-d2b9-4620-bc57-3c76b65a1b1f",
+  "bot-admin": "https://functions.poehali.dev/b68880a9-0967-43f4-91f7-16498123b935"
+}

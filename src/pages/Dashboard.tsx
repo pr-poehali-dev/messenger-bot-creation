@@ -51,18 +51,27 @@ export default function Dashboard() {
 
   const login = async () => {
     if (!maxId.trim()) { setError("Введи свой ID в Макс"); return; }
+    const parsed = parseInt(maxId);
+    if (isNaN(parsed) || parsed <= 0) { setError("ID должен быть числом"); return; }
     setLoading(true); setError("");
     try {
-      const mockUser: UserData = {
-        max_user_id:   parseInt(maxId),
-        max_username:  username || "user",
-        max_name:      name || "Пользователь",
-        is_admin:      false,
-        session_token: "mock_token",
-        subscription:  { status: "trial", expires: new Date(Date.now() + 7 * 86400000).toISOString() },
+      const res = await fetch("/api/strazh-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ max_user_id: parsed, max_username: username || "user", max_name: name || "Пользователь" }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Ошибка входа. Попробуй ещё раз."); return; }
+      const userData: UserData = {
+        max_user_id:   data.max_user_id,
+        max_username:  data.max_username,
+        max_name:      data.max_name || name || "Пользователь",
+        is_admin:      data.is_admin,
+        session_token: data.session_token,
+        subscription:  { status: data.subscription.status, expires: data.subscription.expires },
       };
-      localStorage.setItem("strazh_user", JSON.stringify(mockUser));
-      setUser(mockUser); setStep("main");
+      localStorage.setItem("strazh_user", JSON.stringify(userData));
+      setUser(userData); setStep("main");
     } catch {
       setError("Ошибка подключения. Попробуй ещё раз.");
     } finally {
@@ -111,7 +120,7 @@ export default function Dashboard() {
     if (!groupId) return;
     setViolLoading(true);
     try {
-      const res = await fetch(`/api/strazh-moderation/violations?group_id=${groupId}&days=${days}`);
+      const res = await fetch(`/api/bot-admin/violations?group_id=${groupId}&days=${days}`);
       if (res.ok) setViolations(await res.json());
     } catch (_e) { /* silent */ } finally {
       setViolLoading(false);
@@ -122,7 +131,7 @@ export default function Dashboard() {
     if (!groupId) return;
     setListLoading(true);
     try {
-      const res = await fetch(`/api/strazh-moderation/lists?group_id=${groupId}`);
+      const res = await fetch(`/api/bot-admin/lists?group_id=${groupId}`);
       if (res.ok) {
         const d = await res.json();
         setWhitelist(d.whitelist || []);
@@ -135,7 +144,7 @@ export default function Dashboard() {
 
   const addToList = async () => {
     if (!newUserId || !groupId || !botToken) return;
-    await fetch("/api/strazh-moderation/lists", {
+    await fetch("/api/bot-admin/lists", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ group_id: groupId, token: botToken, target_user_id: parseInt(newUserId), target_name: newUserName, list_type: listType }),
@@ -146,7 +155,7 @@ export default function Dashboard() {
 
   const removeFromList = async (targetId: number) => {
     if (!groupId || !botToken) return;
-    await fetch("/api/strazh-moderation/lists", {
+    await fetch("/api/bot-admin/lists", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ group_id: groupId, token: botToken, target_user_id: targetId }),

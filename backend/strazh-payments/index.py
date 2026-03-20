@@ -61,6 +61,47 @@ def handler(event: dict, context) -> dict:
     path   = event.get("path", "/").rstrip("/")
     method = event.get("httpMethod", "GET")
 
+    # ── GET /stats — статистика для админа ───────────────────
+    if method == "GET" and path.endswith("stats"):
+        import hmac as hmac_mod
+        params        = event.get("queryStringParameters") or {}
+        user_id       = params.get("user_id")
+        session_token = params.get("session_token", "")
+        if not user_id or not session_token:
+            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "user_id and session_token required"})}
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                raw = f"{user_id}:{user_id}:{os.environ.get('DATABASE_URL','')[:20]}"
+                expected = hashlib.sha256(raw.encode()).hexdigest()
+                cur.execute(f"SELECT id, is_admin FROM {SCHEMA}.strazh_users WHERE max_user_id = %s", (int(user_id),))
+                urow = cur.fetchone()
+                if not urow or not urow[1]:
+                    return {"statusCode": 403, "headers": CORS, "body": json.dumps({"error": "Доступ запрещён"})}
+                real_user_id = urow[0]
+                raw2 = f"{int(user_id)}:{real_user_id}:{os.environ.get('DATABASE_URL','')[:20]}"
+                expected2 = hashlib.sha256(raw2.encode()).hexdigest()
+                if not hmac_mod.compare_digest(expected2, session_token):
+                    return {"statusCode": 403, "headers": CORS, "body": json.dumps({"error": "Доступ запрещён"})}
+                cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.strazh_users")
+                total = cur.fetchone()[0]
+                cur.execute(f"SELECT status, COUNT(*) FROM {SCHEMA}.strazh_subscriptions GROUP BY status")
+                by_status = {r[0]: r[1] for r in cur.fetchall()}
+                cur.execute(f"SELECT SUM(sp.price_rub) FROM {SCHEMA}.strazh_payments sp WHERE sp.status='paid' AND sp.paid_at >= NOW() - INTERVAL '30 days'")
+                mrr_row = cur.fetchone()
+                mrr = int(mrr_row[0] or 0)
+            return {"statusCode": 200, "headers": CORS, "body": json.dumps({
+                "stats": {
+                    "total": total,
+                    "active":  by_status.get("active", 0),
+                    "trial":   by_status.get("trial", 0),
+                    "expired": by_status.get("expired", 0),
+                    "mrr": mrr,
+                }
+            })}
+        finally:
+            conn.close()
+
     # ── GET /status ──────────────────────────────────────────
     if method == "GET" and path.endswith("status"):
         params  = event.get("queryStringParameters") or {}

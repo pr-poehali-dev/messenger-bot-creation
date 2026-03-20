@@ -224,9 +224,27 @@ const DEFAULT_RULES = `1. Уважайте друг друга — оскорб�
 export function RulesPage() {
   const saved = localStorage.getItem("bot_rules");
   const [text,   setText]   = useState(saved ?? DEFAULT_RULES);
-  const [status, setStatus] = useState<"idle" | "saved">("idle");
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
-  const save  = () => { localStorage.setItem("bot_rules", text); setStatus("saved"); setTimeout(() => setStatus("idle"), 2500); };
+  const save = async () => {
+    setStatus("saving");
+    const groupId = localStorage.getItem("bot_group_id") || "";
+    const token   = localStorage.getItem("bot_token") || "";
+    localStorage.setItem("bot_rules", text);
+    try {
+      if (groupId && token) {
+        const res = await fetch("/api/bot-admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "save_rules", group_id: groupId, token, rules_text: text }),
+        });
+        if (!res.ok) { setStatus("error"); setTimeout(() => setStatus("idle"), 2500); return; }
+      }
+      setStatus("saved"); setTimeout(() => setStatus("idle"), 2500);
+    } catch {
+      setStatus("error"); setTimeout(() => setStatus("idle"), 2500);
+    }
+  };
   const reset = () => { setText(DEFAULT_RULES); setStatus("idle"); };
 
   const triggers = [
@@ -279,13 +297,14 @@ export function RulesPage() {
           className="px-4 py-3 rounded-xl border border-border bg-card hover:bg-secondary transition-colors text-sm font-medium text-muted-foreground">
           Сбросить
         </button>
-        <button onClick={save}
+        <button onClick={save} disabled={status === "saving"}
           className={`flex-1 py-3 rounded-xl transition-colors text-sm font-bold ${
-            status === "saved"
-              ? "bg-emerald-500 text-white"
-              : "bg-cyan-500 hover:bg-cyan-400 text-[hsl(220_16%_8%)]"
+            status === "saved"  ? "bg-emerald-500 text-white" :
+            status === "error"  ? "bg-red-500/80 text-white" :
+            status === "saving" ? "bg-[hsl(220_12%_22%)] text-muted-foreground cursor-wait" :
+            "bg-cyan-500 hover:bg-cyan-400 text-[hsl(220_16%_8%)]"
           }`}>
-          {status === "saved" ? "✓ Сохранено" : "Сохранить правила"}
+          {status === "saved" ? "✓ Сохранено" : status === "saving" ? "Сохраняю..." : status === "error" ? "Ошибка сохранения" : "Сохранить правила"}
         </button>
       </div>
     </div>
@@ -308,22 +327,22 @@ export function ConnectPage() {
     if (!token.trim() || !groupId.trim()) { setErrMsg("Заполни токен и ID группы"); return; }
     setStatus("loading"); setErrMsg("");
     try {
-      const res  = await fetch(`https://botapi.max.ru/me?access_token=${token.trim()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch("/api/bot-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "connect", token: token.trim(), group_id: groupId.trim() }),
+      });
       const data = await res.json();
-      const name = data?.name ?? data?.username ?? "Бот подключён";
+      if (!res.ok) { setErrMsg(data.error || "Ошибка подключения"); setStatus("error"); return; }
+      const name = data.bot_name || data.bot_username || "Бот подключён";
       setBotName(name);
       localStorage.setItem("bot_token",    token.trim());
       localStorage.setItem("bot_group_id", groupId.trim());
       localStorage.setItem("bot_name",     name);
       setStatus("success");
     } catch {
-      localStorage.setItem("bot_token",    token.trim());
-      localStorage.setItem("bot_group_id", groupId.trim());
-      localStorage.setItem("bot_name",     "Сохранён (не проверен)");
-      setBotName("Сохранён (не проверен)");
-      setStatus("success");
-      setErrMsg("Токен сохранён. Проверка через браузер невозможна из-за ограничений CORS — бот заработает при деплое на сервере.");
+      setErrMsg("Ошибка сети. Проверь подключение.");
+      setStatus("error");
     }
   };
 

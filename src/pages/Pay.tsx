@@ -16,25 +16,50 @@ export default function Pay() {
   const [params]  = useSearchParams();
   const navigate  = useNavigate();
 
-  const plan    = params.get("plan")     || "month";
-  const amount  = params.get("amount")  || "59";
-  const label   = PLAN_LABELS[plan]     || plan;
+  const plan    = params.get("plan")    || "month";
+  const label   = PLAN_LABELS[plan]    || plan;
 
   const user    = (() => { try { return JSON.parse(localStorage.getItem("strazh_user") || "{}"); } catch { return {}; } })();
-  const userId  = user?.max_user_id || "unknown";
-
-  // Стабильный orderId на всё время жизни страницы
-  const orderIdRef = useRef(`STRAZH-${Date.now()}`);
-  const orderId    = orderIdRef.current;
-
-  const comment = `Страж: подписка ${label}, ID ${userId}`;
-  const ymUrl   = `https://yoomoney.ru/quickpay/confirm.xml?receiver=${YOOMONEY_WALLET}&quickpay-form=button&targets=${encodeURIComponent(comment)}&paymentType=AC&sum=${amount}&label=${encodeURIComponent(orderId)}`;
+  const userId  = user?.max_user_id;
 
   const [stage,    setStage]   = useState<Stage>("confirm");
   const [copied,   setCopied]  = useState(false);
   const [seconds,  setSeconds] = useState(0);
+  const [amount,   setAmount]  = useState(params.get("amount") || "59");
+  const [orderId,  setOrderId] = useState(params.get("order_id") || "");
+  const [ymUrl,    setYmUrl]   = useState("");
+  const [initDone, setInitDone] = useState(false);
   const pollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // При загрузке — создать платёж через API
+  useEffect(() => {
+    const init = async () => {
+      if (orderId) {
+        // Пришли с уже созданным order_id — просто восстанавливаем YM-ссылку
+        const comment = `Страж: подписка ${label}, ID ${userId}`;
+        setYmUrl(`https://yoomoney.ru/quickpay/confirm.xml?receiver=${YOOMONEY_WALLET}&quickpay-form=button&targets=${encodeURIComponent(comment)}&paymentType=AC&sum=${amount}&label=${encodeURIComponent(orderId)}`);
+        setInitDone(true);
+        return;
+      }
+      if (!userId || !plan) { setStage("error"); return; }
+      try {
+        const res = await fetch("/api/strazh-payments/create-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId, plan }),
+        });
+        if (!res.ok) { setStage("error"); return; }
+        const data = await res.json();
+        setOrderId(data.order_id);
+        setAmount(String(data.amount_rub));
+        const comment = `Страж: подписка ${label}, ID ${userId}`;
+        setYmUrl(`https://yoomoney.ru/quickpay/confirm.xml?receiver=${YOOMONEY_WALLET}&quickpay-form=button&targets=${encodeURIComponent(comment)}&paymentType=AC&sum=${data.amount_rub}&label=${encodeURIComponent(data.order_id)}`);
+        setInitDone(true);
+      } catch { setStage("error"); }
+    };
+    init();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const copy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -63,13 +88,13 @@ export default function Pay() {
     }
 
     const check = async () => {
-      if (!user?.id) return;
+      if (!orderId) return;
       try {
-        // После деплоя бэкенда URL подставится из func2url.json
-        // Пока функции не задеплоены — проверка пропускается
-        const baseUrl = (window as Record<string, unknown>)["STRAZH_SUBSCRIPTIONS_URL"] as string | undefined;
-        if (!baseUrl) return;
-        const res = await fetch(`${baseUrl}/status?user_id=${user.id}`);
+        const res = await fetch("/api/strazh-payments/confirm-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: orderId }),
+        });
         if (!res.ok) return;
         const data = await res.json();
         if (data.status === "active") {
@@ -82,7 +107,7 @@ export default function Pay() {
 
     pollRef.current = setInterval(check, 5000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [stage, user]);
+  }, [stage, orderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
@@ -114,20 +139,24 @@ export default function Pay() {
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground text-sm">Назначение</span>
-            <span className="text-xs text-muted-foreground text-right max-w-[180px] truncate">{comment}</span>
+            <span className="text-xs text-muted-foreground text-right max-w-[180px] truncate">Страж: подписка {label}, ID {userId}</span>
           </div>
           <div className="border-t border-border pt-3 flex justify-between items-center">
             <span className="text-muted-foreground text-sm">Номер заказа</span>
-            <button onClick={() => copy(orderId)} className="mono text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
-              {orderId.slice(0, 18)}
-              <Icon name={copied ? "Check" : "Copy"} size={11} />
-            </button>
+            {initDone ? (
+              <button onClick={() => copy(orderId)} className="mono text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+                {orderId.slice(0, 18)}
+                <Icon name={copied ? "Check" : "Copy"} size={11} />
+              </button>
+            ) : (
+              <span className="text-xs text-muted-foreground animate-pulse">Создаём заказ...</span>
+            )}
           </div>
         </div>
 
-        <button onClick={openPayment}
-          className="block w-full py-4 rounded-xl bg-[#8B3FFD] hover:bg-[#7A35E0] text-white font-bold text-center transition-colors mb-3">
-          Оплатить через ЮMoney
+        <button onClick={openPayment} disabled={!initDone}
+          className="block w-full py-4 rounded-xl bg-[#8B3FFD] hover:bg-[#7A35E0] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-center transition-colors mb-3">
+          {initDone ? "Оплатить через ЮMoney" : "Подготовка платежа..."}
         </button>
 
         <button onClick={() => navigate("/dashboard")}

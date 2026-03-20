@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 
-const ADMIN_PASSWORD = "strazh-admin-2024"; // TODO: вынести в бэкенд после деплоя функций
-
 interface Plan {
   plan:      string;
   label:     string;
@@ -12,37 +10,76 @@ interface Plan {
   badge:     string | null;
 }
 
-const DEFAULT_PLANS: Plan[] = [
-  { plan: "month",   label: "1 месяц",  price_rub: 59,  days: 30,  badge: null      },
-  { plan: "quarter", label: "3 месяца", price_rub: 149, days: 90,  badge: "Выгодно" },
-  { plan: "year",    label: "Год",      price_rub: 590, days: 365, badge: "Лучший"  },
-];
+interface Stats {
+  total: number; trial: number; active: number; expired: number; mrr: number;
+}
 
 export default function Admin() {
   const navigate     = useNavigate();
   const [authed,     setAuthed]     = useState(false);
-  const [password,   setPassword]   = useState("");
+  const [adminUser,  setAdminUser]  = useState<{ user_id: number; session_token: string } | null>(null);
+  const [maxId,      setMaxId]      = useState("");
   const [pwError,    setPwError]    = useState("");
-  const [plans,      setPlans]      = useState<Plan[]>(DEFAULT_PLANS);
+  const [loginLoad,  setLoginLoad]  = useState(false);
+  const [plans,      setPlans]      = useState<Plan[]>([]);
+  const [plansLoad,  setPlansLoad]  = useState(false);
   const [editing,    setEditing]    = useState<string | null>(null);
   const [editPrice,  setEditPrice]  = useState("");
   const [editBadge,  setEditBadge]  = useState("");
   const [saved,      setSaved]      = useState<string | null>(null);
   const [activeTab,  setActiveTab]  = useState<"pricing" | "stats">("pricing");
+  const [stats,      setStats]      = useState<Stats | null>(null);
+  const [statsLoad,  setStatsLoad]  = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem("strazh_admin") === "1") setAuthed(true);
-    const stored = localStorage.getItem("strazh_plans");
-    if (stored) setPlans(JSON.parse(stored));
+    const stored = sessionStorage.getItem("strazh_admin_user");
+    if (stored) { const u = JSON.parse(stored); setAdminUser(u); setAuthed(true); }
   }, []);
 
-  const login = () => {
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem("strazh_admin", "1");
-      setAuthed(true);
-    } else {
-      setPwError("Неверный пароль");
-    }
+  useEffect(() => {
+    if (authed) { loadPlans(); if (activeTab === "stats") loadStats(); }
+  }, [authed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (authed && activeTab === "stats" && !stats) loadStats();
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadPlans = async () => {
+    setPlansLoad(true);
+    try {
+      const res = await fetch("/api/strazh-auth/pricing");
+      if (res.ok) { const d = await res.json(); setPlans(d.plans || []); }
+    } finally { setPlansLoad(false); }
+  };
+
+  const loadStats = async () => {
+    if (!adminUser) return;
+    setStatsLoad(true);
+    try {
+      const res = await fetch(`/api/strazh-payments/stats?user_id=${adminUser.user_id}&session_token=${adminUser.session_token}`);
+      if (res.ok) { const d = await res.json(); setStats(d.stats || null); }
+    } finally { setStatsLoad(false); }
+  };
+
+  const login = async () => {
+    if (!maxId.trim()) { setPwError("Введи свой Max ID (должен быть помечен как админ в БД)"); return; }
+    const parsed = parseInt(maxId);
+    if (isNaN(parsed)) { setPwError("ID должен быть числом"); return; }
+    setLoginLoad(true); setPwError("");
+    try {
+      const res = await fetch("/api/strazh-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ max_user_id: parsed, max_username: "admin", max_name: "Admin" }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setPwError(data.error || "Ошибка входа"); return; }
+      if (!data.is_admin) { setPwError("Нет прав администратора"); return; }
+      const u = { user_id: data.user_id, session_token: data.session_token };
+      sessionStorage.setItem("strazh_admin_user", JSON.stringify(u));
+      setAdminUser(u); setAuthed(true);
+    } catch { setPwError("Ошибка подключения"); }
+    finally { setLoginLoad(false); }
   };
 
   const startEdit = (plan: Plan) => {
@@ -51,25 +88,29 @@ export default function Admin() {
     setEditBadge(plan.badge || "");
   };
 
-  const saveEdit = (planKey: string) => {
+  const saveEdit = async (planKey: string) => {
+    if (!adminUser) return;
     const newPlans = plans.map(p =>
       p.plan === planKey
         ? { ...p, price_rub: parseInt(editPrice) || p.price_rub, badge: editBadge || null }
         : p
     );
     setPlans(newPlans);
-    localStorage.setItem("strazh_plans", JSON.stringify(newPlans));
     setEditing(null);
     setSaved(planKey);
-    setTimeout(() => setSaved(null), 2000);
-  };
-
-  const mockStats = {
-    total:   142,
-    trial:   38,
-    active:  91,
-    expired: 13,
-    mrr:     (91 * 59).toLocaleString("ru-RU"),
+    try {
+      await fetch("/api/strazh-auth/pricing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: adminUser.user_id,
+          session_token: adminUser.session_token,
+          plan: planKey,
+          price_rub: parseInt(editPrice),
+          badge: editBadge || null,
+        }),
+      });
+    } finally { setTimeout(() => setSaved(null), 2000); }
   };
 
   // ── AUTH ──────────────────────────────────────────────
@@ -85,15 +126,16 @@ export default function Admin() {
         </div>
         <div className="p-6 rounded-2xl bg-card border border-border space-y-4">
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Пароль</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Твой Max ID</label>
+            <input type="number" value={maxId} onChange={e => setMaxId(e.target.value)}
               onKeyDown={e => e.key === "Enter" && login()}
-              placeholder="••••••••" className="field-input" />
+              placeholder="123456789" className="field-input mono" />
+            <p className="text-xs text-muted-foreground mt-1">Аккаунт должен иметь права admin в системе</p>
           </div>
           {pwError && <p className="text-sm text-red-400">{pwError}</p>}
-          <button onClick={login}
-            className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-[hsl(220_16%_8%)] font-bold transition-colors">
-            Войти
+          <button onClick={login} disabled={loginLoad}
+            className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 text-[hsl(220_16%_8%)] font-bold transition-colors">
+            {loginLoad ? "Проверяю..." : "Войти"}
           </button>
         </div>
         <button onClick={() => navigate("/")} className="mt-4 text-xs text-muted-foreground hover:text-foreground w-full text-center">
@@ -196,43 +238,47 @@ export default function Admin() {
               </div>
             ))}
 
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-              <p className="text-xs text-amber-400">
-                После подключения бэкенда цены будут сохраняться в базе данных и автоматически применяться на лендинге и при оплате.
-              </p>
-            </div>
+            {plansLoad && <div className="py-6 text-center text-muted-foreground text-sm animate-pulse">Загружаю тарифы...</div>}
+            {!plansLoad && plans.length === 0 && (
+              <div className="p-4 rounded-xl bg-secondary/50 border border-border text-xs text-muted-foreground">Тарифы не загружены</div>
+            )}
           </div>
         )}
 
         {/* STATS TAB */}
         {activeTab === "stats" && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "Всего пользователей", val: mockStats.total, icon: "Users",    color: "text-foreground" },
-                { label: "Активных подписок",   val: mockStats.active,  icon: "Check",    color: "text-emerald-400" },
-                { label: "На триале",           val: mockStats.trial,   icon: "Clock",    color: "text-cyan-400"    },
-                { label: "Истекших",            val: mockStats.expired, icon: "XCircle",  color: "text-red-400"     },
-              ].map((s, i) => (
-                <div key={i} className="p-4 rounded-xl bg-card border border-border">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon name={s.icon} size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">{s.label}</span>
-                  </div>
-                  <div className={`text-3xl font-black ${s.color}`}>{s.val}</div>
+            {statsLoad ? (
+              <div className="py-10 text-center text-muted-foreground text-sm animate-pulse">Загружаю статистику...</div>
+            ) : stats ? (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Всего пользователей", val: stats.total,   icon: "Users",   color: "text-foreground"  },
+                    { label: "Активных подписок",   val: stats.active,  icon: "Check",   color: "text-emerald-400" },
+                    { label: "На триале",           val: stats.trial,   icon: "Clock",   color: "text-cyan-400"    },
+                    { label: "Истекших",            val: stats.expired, icon: "XCircle", color: "text-red-400"     },
+                  ].map((s, i) => (
+                    <div key={i} className="p-4 rounded-xl bg-card border border-border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Icon name={s.icon} size={14} className="text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">{s.label}</span>
+                      </div>
+                      <div className={`text-3xl font-black ${s.color}`}>{s.val}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="p-5 rounded-2xl bg-card border border-border">
-              <div className="text-xs text-muted-foreground mb-1">Ежемесячная выручка (MRR)</div>
-              <div className="text-4xl font-black text-cyan-400">{mockStats.mrr} ₽</div>
-              <p className="text-xs text-muted-foreground mt-2">Расчёт: {mockStats.active} активных × 59 ₽</p>
-            </div>
-            <div className="p-4 rounded-xl bg-secondary/50 border border-border">
-              <p className="text-xs text-muted-foreground">
-                Реальная статистика появится после подключения бэкенда и первых платёжных транзакций.
-              </p>
-            </div>
+                <div className="p-5 rounded-2xl bg-card border border-border">
+                  <div className="text-xs text-muted-foreground mb-1">Выручка за 30 дней</div>
+                  <div className="text-4xl font-black text-cyan-400">{stats.mrr.toLocaleString("ru-RU")} ₽</div>
+                </div>
+                <button onClick={loadStats} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5">
+                  <Icon name="RefreshCw" size={11} /> Обновить
+                </button>
+              </>
+            ) : (
+              <div className="py-10 text-center text-muted-foreground text-sm">Не удалось загрузить статистику</div>
+            )}
           </div>
         )}
       </main>
