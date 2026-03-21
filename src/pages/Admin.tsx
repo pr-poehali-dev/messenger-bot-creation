@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
+import AdminPricingTab    from "@/pages/admin/AdminPricingTab";
+import AdminTrialTab      from "@/pages/admin/AdminTrialTab";
+import AdminModerationTab from "@/pages/admin/AdminModerationTab";
+import AdminStatsTab      from "@/pages/admin/AdminStatsTab";
 
 interface Plan {
   plan:      string;
@@ -360,418 +364,74 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* PRICING TAB */}
         {activeTab === "pricing" && (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Изменения применяются мгновенно для всех новых пользователей.</p>
-            {plans.map(p => (
-              <div key={p.plan} className="p-5 rounded-2xl bg-card border border-border">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <span className="font-bold">{p.label}</span>
-                    {p.badge && (
-                      <span className="ml-2 px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 text-xs">{p.badge}</span>
-                    )}
-                  </div>
-                  {saved === p.plan
-                    ? <span className="text-xs text-emerald-400 font-semibold">✓ Сохранено</span>
-                    : <button onClick={() => startEdit(p.plan)} className="text-xs text-cyan-400 hover:text-cyan-300">
-                        Изменить
-                      </button>
-                  }
-                </div>
-
-                {editing === p.plan ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Цена (₽)</label>
-                      <input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)}
-                        className="field-input mono" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Бейдж (необязательно)</label>
-                      <input type="text" value={editBadge} onChange={e => setEditBadge(e.target.value)}
-                        placeholder="Выгодно, Хит, Лучший..." className="field-input" />
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => setEditing(null)}
-                        className="flex-1 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-secondary transition-colors">
-                        Отмена
-                      </button>
-                      <button onClick={() => saveEdit(p.plan)}
-                        className="flex-1 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-[hsl(220_16%_8%)] text-sm font-bold transition-colors">
-                        Сохранить
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="text-2xl font-black text-foreground">{p.price_rub} ₽</span>
-                    <span>·</span>
-                    <span>{p.days} дней</span>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {plansLoad && <div className="py-6 text-center text-muted-foreground text-sm animate-pulse">Загружаю тарифы...</div>}
-            {!plansLoad && plans.length === 0 && (
-              <div className="p-4 rounded-xl bg-secondary/50 border border-border text-xs text-muted-foreground">Тарифы не загружены</div>
-            )}
-          </div>
+          <AdminPricingTab
+            plans={plans}
+            plansLoad={plansLoad}
+            editing={editing}
+            editPrice={editPrice}
+            editBadge={editBadge}
+            saved={saved}
+            setEditing={setEditing}
+            setEditPrice={setEditPrice}
+            setEditBadge={setEditBadge}
+            startEdit={startEdit}
+            saveEdit={saveEdit}
+          />
         )}
 
-        {/* TRIAL TAB */}
         {activeTab === "trial" && (
-          <div className="space-y-4">
-            <div className="p-5 rounded-2xl bg-card border border-border space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="font-bold mb-1">Длительность пробного периода</div>
-                  <div className="text-xs text-muted-foreground max-w-xs">
-                    Применяется только к новым пользователям. Существующие подписки не изменятся.
-                  </div>
-                </div>
-                {trialSaved && (
-                  <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-                    <Icon name="Check" size={12} /> Сохранено
-                  </span>
-                )}
-              </div>
-
-              {trialLoad ? (
-                <div className="py-4 text-center text-muted-foreground text-sm animate-pulse">Загружаю...</div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3">
-                    <div className="text-5xl font-black text-cyan-400 tabular-nums">
-                      {trialDays ?? "—"}
-                    </div>
-                    <div className="text-muted-foreground text-sm">дней</div>
-                  </div>
-
-                  {!trialEditing ? (
-                    <button
-                      onClick={() => { setTrialInput(String(trialDays ?? 7)); setTrialEditing(true); setTrialError(""); }}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-semibold hover:bg-cyan-500/20 transition-colors"
-                    >
-                      <Icon name="Pencil" size={14} />
-                      Изменить длительность
-                    </button>
-                  ) : (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs text-muted-foreground block mb-1.5">
-                          Новое количество дней (1–365)
-                        </label>
-                        <input
-                          type="number"
-                          value={trialInput}
-                          onChange={e => setTrialInput(e.target.value)}
-                          onKeyDown={e => e.key === "Enter" && saveTrialDays()}
-                          min={1} max={365}
-                          className="field-input mono"
-                          autoFocus
-                        />
-                      </div>
-                      {trialError && (
-                        <p className="text-sm text-red-400">{trialError}</p>
-                      )}
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => { setTrialEditing(false); setTrialError(""); }}
-                          className="flex-1 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary transition-colors"
-                        >
-                          Отмена
-                        </button>
-                        <button
-                          onClick={saveTrialDays}
-                          disabled={trialSaving}
-                          className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 text-[hsl(220_16%_8%)] text-sm font-bold transition-colors"
-                        >
-                          {trialSaving ? "Сохраняю..." : "Сохранить"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Пояснение */}
-            <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 space-y-2">
-              <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold">
-                <Icon name="Info" size={13} />
-                Как работает пробный период
-              </div>
-              <ul className="text-xs text-muted-foreground space-y-1.5 pl-1">
-                <li>• Привязан к уникальному ID пользователя в мессенджере Max</li>
-                <li>• Новый аккаунт с тем же именем не обнуляет счётчик</li>
-                <li>• Доступ к платным функциям автоматически блокируется после истечения</li>
-                <li>• Пользователь получает уведомление за 3 дня и за 1 день до конца</li>
-                <li>• Для тестирования рекомендуем 31 день, для продакшна — 7–14 дней</li>
-              </ul>
-            </div>
-          </div>
+          <AdminTrialTab
+            trialDays={trialDays}
+            trialLoad={trialLoad}
+            trialEditing={trialEditing}
+            trialInput={trialInput}
+            trialSaving={trialSaving}
+            trialSaved={trialSaved}
+            trialError={trialError}
+            setTrialEditing={setTrialEditing}
+            setTrialInput={setTrialInput}
+            setTrialError={setTrialError}
+            saveTrialDays={saveTrialDays}
+          />
         )}
 
-        {/* MODERATION TAB */}
         {activeTab === "moderation" && (
-          <div className="space-y-4">
-            {/* Sub-tabs */}
-            <div className="flex gap-2">
-              {[
-                { key: "words"  as const, label: "Запрещённые слова" },
-                { key: "log"    as const, label: "История" },
-                { key: "filter" as const, label: "Настройки фильтра" },
-              ].map(t => (
-                <button key={t.key} onClick={() => setModTab(t.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${modTab === t.key
-                    ? "bg-cyan-500/15 border border-cyan-500/30 text-cyan-400"
-                    : "bg-secondary border border-border text-muted-foreground hover:text-foreground"}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* BANNED WORDS */}
-            {modTab === "words" && (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Слова добавляются в глобальный фильтр. Бот удаляет сообщения, содержащие эти слова, во всех чатах где включена модерация.
-                </p>
-
-                {/* Add word */}
-                <div className="p-4 rounded-xl bg-card border border-border space-y-3">
-                  <div className="text-sm font-semibold">Добавить слово</div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newWord}
-                      onChange={e => setNewWord(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && addBannedWord()}
-                      placeholder="Введите слово или фразу..."
-                      className="field-input flex-1"
-                    />
-                    <select
-                      value={newWordCat}
-                      onChange={e => setNewWordCat(e.target.value)}
-                      className="field-input w-32"
-                    >
-                      <option value="spam">Спам</option>
-                      <option value="insult">Оскорбление</option>
-                      <option value="link">Ссылка</option>
-                    </select>
-                    <button
-                      onClick={addBannedWord}
-                      disabled={wordSaving || !newWord.trim()}
-                      className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-[hsl(220_16%_8%)] text-sm font-bold transition-colors"
-                    >
-                      <Icon name="Plus" size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Words list */}
-                <div className="p-4 rounded-xl bg-card border border-border space-y-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm font-semibold">Список ({bannedWords.length})</div>
-                    <button onClick={loadBannedWords} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                      <Icon name="RefreshCw" size={11} /> Обновить
-                    </button>
-                  </div>
-                  {bannedLoad ? (
-                    <div className="py-4 text-center text-sm text-muted-foreground animate-pulse">Загружаю...</div>
-                  ) : bannedWords.length === 0 ? (
-                    <div className="py-4 text-center text-sm text-muted-foreground">Список пуст</div>
-                  ) : (
-                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                      {bannedWords.map(w => (
-                        <div key={w.word} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-mono">{w.word}</span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                              w.category === "spam" ? "bg-yellow-500/10 text-yellow-400" :
-                              w.category === "insult" ? "bg-red-500/10 text-red-400" :
-                              "bg-blue-500/10 text-blue-400"
-                            }`}>{w.category}</span>
-                          </div>
-                          <button
-                            onClick={() => removeBannedWord(w.word)}
-                            className="text-muted-foreground hover:text-red-400 transition-colors"
-                          >
-                            <Icon name="X" size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* MODERATION LOG */}
-            {modTab === "log" && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground">За последние:</span>
-                  {[6, 24, 72].map(h => (
-                    <button key={h} onClick={() => setModLogHours(h)}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${modLogHours === h
-                        ? "bg-cyan-500/15 border border-cyan-500/30 text-cyan-400"
-                        : "bg-secondary border border-border text-muted-foreground"}`}>
-                      {h === 6 ? "6 ч" : h === 24 ? "24 ч" : "3 дня"}
-                    </button>
-                  ))}
-                  <button onClick={loadModLog} className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                    <Icon name="RefreshCw" size={11} /> Обновить
-                  </button>
-                </div>
-
-                {modLogLoad ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground animate-pulse">Загружаю историю...</div>
-                ) : modLog.length === 0 ? (
-                  <div className="p-8 rounded-xl bg-card border border-border text-center text-sm text-muted-foreground">
-                    Нарушений не зафиксировано
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {modLog.map(entry => (
-                      <div key={entry.id} className="p-4 rounded-xl bg-card border border-border space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold">{entry.user_name || "Аноним"}</span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                              entry.reason === "spam" ? "bg-yellow-500/10 text-yellow-400" :
-                              entry.reason === "insult" ? "bg-red-500/10 text-red-400" :
-                              entry.reason === "link" ? "bg-blue-500/10 text-blue-400" :
-                              "bg-orange-500/10 text-orange-400"
-                            }`}>{entry.reason}</span>
-                            <span className="text-xs text-muted-foreground">{entry.chat_type}</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(entry.created_at).toLocaleString("ru-RU", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground font-mono bg-secondary/50 px-2 py-1.5 rounded line-clamp-2">
-                          «{entry.message_text}»
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* FILTER SETTINGS */}
-            {modTab === "filter" && (
-              <div className="space-y-3">
-                {filterLoad ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground animate-pulse">Загружаю...</div>
-                ) : filterSettings && (
-                  <div className="p-5 rounded-2xl bg-card border border-border space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold text-sm">Параметры фильтрации</div>
-                      <div className="flex items-center gap-2">
-                        {filterSaved && <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1"><Icon name="Check" size={12} /> Сохранено</span>}
-                        {!filterEditing ? (
-                          <button
-                            onClick={() => { setFilterInput({ ...filterSettings }); setFilterEditing(true); }}
-                            className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
-                          >
-                            <Icon name="Pencil" size={12} /> Изменить
-                          </button>
-                        ) : (
-                          <div className="flex gap-2">
-                            <button onClick={() => setFilterEditing(false)} className="text-xs text-muted-foreground hover:text-foreground">Отмена</button>
-                            <button onClick={saveFilterSettings} className="text-xs text-cyan-400 font-semibold hover:text-cyan-300">Сохранить</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {[
-                      { key: "flood_limit" as const, label: "Лимит сообщений (флуд)", hint: "сообщений за период" },
-                      { key: "flood_window_sec" as const, label: "Окно антифлуда", hint: "секунд" },
-                      { key: "max_warnings" as const, label: "Максимум предупреждений", hint: "до блокировки" },
-                    ].map(f => (
-                      <div key={f.key} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                        <div>
-                          <div className="text-sm">{f.label}</div>
-                          <div className="text-xs text-muted-foreground">{f.hint}</div>
-                        </div>
-                        {filterEditing ? (
-                          <input
-                            type="number"
-                            value={filterInput[f.key] ?? filterSettings[f.key]}
-                            onChange={e => setFilterInput(prev => ({ ...prev, [f.key]: e.target.value }))}
-                            className="field-input w-24 text-right mono"
-                          />
-                        ) : (
-                          <span className="font-mono text-lg font-bold text-cyan-400">{filterSettings[f.key]}</span>
-                        )}
-                      </div>
-                    ))}
-
-                    <div className="py-2 border-t border-border">
-                      <div className="text-sm mb-2">Запрещённые домены</div>
-                      {filterEditing ? (
-                        <textarea
-                          value={filterInput.forbidden_domains ?? filterSettings.forbidden_domains}
-                          onChange={e => setFilterInput(prev => ({ ...prev, forbidden_domains: e.target.value }))}
-                          placeholder='["bit.ly","tinyurl.com"]'
-                          className="field-input w-full text-xs mono h-20 resize-none"
-                        />
-                      ) : (
-                        <div className="flex flex-wrap gap-1.5">
-                          {JSON.parse(filterSettings.forbidden_domains || "[]").map((d: string) => (
-                            <span key={d} className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 text-xs font-mono">{d}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <AdminModerationTab
+            modTab={modTab}
+            setModTab={setModTab}
+            bannedWords={bannedWords}
+            bannedLoad={bannedLoad}
+            newWord={newWord}
+            newWordCat={newWordCat}
+            wordSaving={wordSaving}
+            setNewWord={setNewWord}
+            setNewWordCat={setNewWordCat}
+            addBannedWord={addBannedWord}
+            removeBannedWord={removeBannedWord}
+            loadBannedWords={loadBannedWords}
+            modLog={modLog}
+            modLogLoad={modLogLoad}
+            modLogHours={modLogHours}
+            setModLogHours={setModLogHours}
+            loadModLog={loadModLog}
+            filterSettings={filterSettings}
+            filterLoad={filterLoad}
+            filterEditing={filterEditing}
+            filterInput={filterInput}
+            filterSaved={filterSaved}
+            setFilterEditing={setFilterEditing}
+            setFilterInput={setFilterInput}
+            saveFilterSettings={saveFilterSettings}
+          />
         )}
 
-        {/* STATS TAB */}
         {activeTab === "stats" && (
-          <div className="space-y-4">
-            {statsLoad ? (
-              <div className="py-10 text-center text-muted-foreground text-sm animate-pulse">Загружаю статистику...</div>
-            ) : stats ? (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: "Всего пользователей", val: stats.total,   icon: "Users",   color: "text-foreground"  },
-                    { label: "Активных подписок",   val: stats.active,  icon: "Check",   color: "text-emerald-400" },
-                    { label: "На триале",           val: stats.trial,   icon: "Clock",   color: "text-cyan-400"    },
-                    { label: "Истекших",            val: stats.expired, icon: "XCircle", color: "text-red-400"     },
-                  ].map((s, i) => (
-                    <div key={i} className="p-4 rounded-xl bg-card border border-border">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Icon name={s.icon} size={14} className="text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{s.label}</span>
-                      </div>
-                      <div className={`text-3xl font-black ${s.color}`}>{s.val}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="p-5 rounded-2xl bg-card border border-border">
-                  <div className="text-xs text-muted-foreground mb-1">Выручка за 30 дней</div>
-                  <div className="text-4xl font-black text-cyan-400">{stats.mrr.toLocaleString("ru-RU")} ₽</div>
-                </div>
-                <button onClick={loadStats} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5">
-                  <Icon name="RefreshCw" size={11} /> Обновить
-                </button>
-              </>
-            ) : (
-              <div className="py-10 text-center text-muted-foreground text-sm">Не удалось загрузить статистику</div>
-            )}
-          </div>
+          <AdminStatsTab
+            stats={stats}
+            statsLoad={statsLoad}
+            loadStats={loadStats}
+          />
         )}
       </main>
     </div>
