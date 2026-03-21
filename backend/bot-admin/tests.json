@@ -89,6 +89,55 @@
       "expectedStatus": 403,
       "expectedBody": {"error": "Доступ запрещён"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /moderation без chat_id — 400",
+      "method": "GET",
+      "path": "/moderation",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "chat_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /moderation несуществующий чат — 200 defaults",
+      "method": "GET",
+      "path": "/moderation?chat_id=999999999",
+      "expectedStatus": 200,
+      "expectedBody": {"moderation_enabled": false},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /banned-words без user_id — 400",
+      "method": "GET",
+      "path": "/banned-words",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /moderation-log без user_id — 400",
+      "method": "GET",
+      "path": "/moderation-log",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /filter-settings без user_id — 400",
+      "method": "GET",
+      "path": "/filter-settings",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST /webhook — пустое событие",
+      "method": "POST",
+      "path": "/webhook",
+      "body": {"update_type": "unknown"},
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
     }
   ]
 }
