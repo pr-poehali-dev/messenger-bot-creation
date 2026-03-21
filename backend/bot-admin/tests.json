@@ -138,6 +138,38 @@
       "expectedStatus": 200,
       "expectedBody": {"ok": true},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /moderators без user_id — 400",
+      "method": "GET",
+      "path": "/moderators",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /moderators без прав — 403",
+      "method": "GET",
+      "path": "/moderators?user_id=1&session_token=fake",
+      "expectedStatus": 403,
+      "expectedBody": {"error": "Доступ запрещён"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /support без user_id — 400",
+      "method": "GET",
+      "path": "/support",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "user_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET /support без прав — 403",
+      "method": "GET",
+      "path": "/support?user_id=1&session_token=fake",
+      "expectedStatus": 403,
+      "expectedBody": {"error": "Доступ запрещён"},
+      "bodyMatcher": "partial"
     }
   ]
 }

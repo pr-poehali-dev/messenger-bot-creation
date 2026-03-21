@@ -5,6 +5,8 @@ import AdminPricingTab    from "@/pages/admin/AdminPricingTab";
 import AdminTrialTab      from "@/pages/admin/AdminTrialTab";
 import AdminModerationTab from "@/pages/admin/AdminModerationTab";
 import AdminStatsTab      from "@/pages/admin/AdminStatsTab";
+import AdminModeratorsTab from "@/pages/admin/AdminModeratorsTab";
+import AdminSupportTab    from "@/pages/admin/AdminSupportTab";
 
 interface Plan {
   plan:      string;
@@ -56,7 +58,7 @@ export default function Admin() {
   const [editPrice,  setEditPrice]  = useState("");
   const [editBadge,  setEditBadge]  = useState("");
   const [saved,      setSaved]      = useState<string | null>(null);
-  const [activeTab,  setActiveTab]  = useState<"pricing" | "stats" | "trial" | "moderation">("pricing");
+  const [activeTab,  setActiveTab]  = useState<"pricing" | "stats" | "trial" | "moderation" | "moderators" | "support">("pricing");
   const [stats,      setStats]      = useState<Stats | null>(null);
   const [statsLoad,  setStatsLoad]  = useState(false);
   // trial
@@ -353,6 +355,8 @@ export default function Admin() {
             { key: "pricing"    as const, label: "Тарифы" },
             { key: "trial"      as const, label: "Триал" },
             { key: "moderation" as const, label: "Модерация" },
+            { key: "moderators" as const, label: "Модераторы" },
+            { key: "support"    as const, label: "Запросы помощи" },
             { key: "stats"      as const, label: "Статистика" },
           ].map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -424,6 +428,14 @@ export default function Admin() {
             setFilterInput={setFilterInput}
             saveFilterSettings={saveFilterSettings}
           />
+        )}
+
+        {activeTab === "moderators" && (
+          <AdminModeratorsTab adminUser={adminUser} />
+        )}
+
+        {activeTab === "support" && (
+          <AdminSupportTab adminUser={adminUser} />
         )}
 
         {activeTab === "stats" && (
